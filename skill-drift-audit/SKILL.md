@@ -1,6 +1,6 @@
 ---
 name: skill-drift-audit
-description: Audit whether an installed skill is the same code and documentation as its source of truth, whether its SKILL.md promises files that actually exist, and whether it is usable by someone who did not build it. Use when a skill behaves differently from its documentation, when a skill was installed in an earlier session and may be an older generation, before relying on a skill for an important deliverable, after pulling or pushing a skill repository, when a repository's commit and remote sync state must be confirmed, when a workflow "does not work" and a stale install could be the cause rather than a bug, or when a skill must be validated by a non-developer, a citizen developer, or an end user rather than its author.
+description: Audit whether an installed skill is the same code and documentation as its source of truth, whether its SKILL.md promises files that actually exist, whether it is usable by someone who did not build it, and whether a fresh clone can install and use it. Use when a skill behaves differently from its documentation, when a skill was installed in an earlier session and may be an older generation, before relying on a skill for an important deliverable, after pulling or pushing a skill repository, when a repository's commit and remote sync state must be confirmed, when a workflow "does not work" and a stale install could be the cause rather than a bug, when a skill must be validated by a non-developer, a citizen developer, or an end user rather than its author, or when a skill repository needs CI that verifies it on every push.
 ---
 
 # Skill Drift Audit
@@ -148,6 +148,27 @@ The three things that most often invalidate a run:
 
 Report a coached or invalid run honestly. Never present one as a pass.
 
+### 7. Automate the audit so it cannot be skipped
+
+Everything above depends on someone remembering to run it. Wire it into CI so a clean clone
+proves the repository works, on every push.
+
+The stage that matters most is **clone reproducibility**: CI is the only place the
+"SKILL.md documents a file that was never committed" failure is caught reliably, because CI
+starts from a clean clone while an author's machine still has the file.
+
+Four stages belong in CI — contract, structure, content equality, clone reproducibility — plus
+one assertion most people omit: **prove the checker discriminates**. Pair every positive
+assertion with the negative case it separates from, or the check manufactures confidence
+instead of removing risk.
+
+`references/ci-integration.md` covers the workflow shape, the two traps that break a first
+attempt (the pull-request merge-commit trap, and heredocs breaking the YAML block scalar), and
+why a CI script must not depend on a separately installed skill.
+
+Keep the script usable on a developer machine by making CI differences explicit flags
+(`--offline`, `--skip-clone`, `--api`) rather than workflow-only branches.
+
 ## Reporting Drift
 
 Report the specific files, not a general impression. Name what is missing and what the
@@ -172,4 +193,5 @@ Distinguish the three severities:
 - `scripts/citizen_test_kit.py` — emit a citizen-developer task sheet and judge the returned result.
 - `references/drift-failure-modes.md` — five concrete drift and contract failures, with detection and fix.
 - `references/citizen-developer-testing.md` — the four norms, eight validity checks, and five verdicts for non-developer testing.
+- `references/ci-integration.md` — workflow shape, the pull-request and block-scalar traps, and proving the checker discriminates.
 - `templates/audit_report.example.json` — the JSON shape both scripts emit.
