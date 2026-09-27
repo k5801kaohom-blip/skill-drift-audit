@@ -47,9 +47,10 @@ failure detail is usually in the wording the tester would have tidied away.
 A run that succeeds but takes six attempts, or needs a guess about a path, is a **pass with
 friction**. Record it. Friction is the leading indicator of the next drift report.
 
-## Verification checklist
+## The eight validity checks
 
-Run this against the returned result sheet. Any `no` makes the result `INVALID`.
+Run these eight validity checks against the returned result sheet. Any `no` makes the
+result `INVALID`.
 
 | # | Check | Why it matters |
 | --- | --- | --- |
