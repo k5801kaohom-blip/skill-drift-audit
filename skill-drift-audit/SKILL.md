@@ -1,6 +1,10 @@
 ---
 name: skill-drift-audit
-description: Audit whether an installed skill is the same code and documentation as its source of truth, whether its SKILL.md promises files that actually exist, whether it is usable by someone who did not build it, and whether a fresh clone can install and use it. Use when a skill behaves differently from its documentation, when a skill was installed in an earlier session and may be an older generation, before relying on a skill for an important deliverable, after pulling or pushing a skill repository, when a repository's commit and remote sync state must be confirmed, when a workflow "does not work" and a stale install could be the cause rather than a bug, when a skill must be validated by a non-developer, a citizen developer, or an end user rather than its author, or when a skill repository needs CI that verifies it on every push.
+description: 觸發詞：技能稽核、技能版本、技能漂移、技能檢查、技能測試、公民開發者測試、非開發者測試、倉庫同步確認、技能失效、技能行為不符。Audit whether an installed skill is the same code and documentation as its source of truth, whether its SKILL.md promises files that actually exist, whether it is usable by someone who did not build it, and whether a fresh clone can install and use it. Use when a skill behaves differently from its documentation, when a skill was installed in an earlier session and may be an older generation, before relying on a skill for an important deliverable, after pulling or pushing a skill repository, when a repository's commit and remote sync state must be confirmed, when a workflow "does not work" and a stale install could be the cause rather than a bug, when a skill must be validated by a non-developer, a citizen developer, or an end user rather than its author, or when a skill repository needs CI that verifies it on every push.
+metadata:
+  alias_zh-TW: 技能版本稽核
+  short_alias_zh-TW: 技能稽核
+  keywords_zh-TW: 技能稽核、技能版本稽核、技能版本、技能漂移、技能檢查、技能測試、公民開發者測試、非開發者測試、倉庫同步確認、技能失效、技能行為不符
 ---
 
 # Skill Drift Audit
