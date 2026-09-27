@@ -12,8 +12,8 @@ on:
     branches: [main]
   workflow_dispatch:
   schedule:
-    # Weekly, to catch drift that is not caused by a push — for example a file
-    # deleted on the remote, or a dependency of the checks disappearing.
+    # Weekly, to catch drift not caused by a push — for example a file deleted on
+    # the remote, or a dependency of the checks disappearing.
     - cron: "0 1 * * 1"
 
 permissions:
@@ -49,12 +49,11 @@ jobs:
           python3 --version
           git --version
 
-      # Stage 1 of verify_sync.sh fetches origin/main. On a pull_request event the
-      # checked-out HEAD is a merge commit, so HEAD != origin/main is expected and
-      # the script would report a false failure. The sync stages are therefore run
-      # only on push; pull requests run the integrity stages.
+      # On a pull_request event the checked-out HEAD is a merge commit, so
+      # HEAD != origin/main is expected and the sync stages would report a false
+      # failure. They therefore run only on push; pull requests run the integrity
+      # stages offline.
       - name: Repository integrity
-        id: integrity
         run: |
           if [ "${{ github.event_name }}" = "push" ]; then
             ./verify_sync.sh --json verify-report.json
@@ -73,30 +72,13 @@ jobs:
       - name: Summary
         if: always()
         run: |
-          {
-            echo "## Repository verification"
-            echo
-            if [ -f verify-report.json ]; then
-              python3 - <<'PY'
-import json, os
-from pathlib import Path
-p = Path("verify-report.json")
-if not p.is_file():
-    print("_no report produced_")
-    raise SystemExit(0)
-r = json.loads(p.read_text(encoding="utf-8"))
-print(f"**Verdict: {r['verdict']}** — {r['passed']} passed, {r['failed']} failed, {r['skipped']} skipped")
-print()
-print("| Status | Check | Detail |")
-print("| --- | --- | --- |")
-for c in r["checks"]:
-    icon = {"PASS": "pass", "FAIL": "**FAIL**", "SKIP": "skip"}.get(c["status"], c["status"])
-    print(f"| {icon} | {c['check']} | {c['detail']} |")
-PY
-            else
-              echo "_verify-report.json was not produced_"
-            fi
-          } >> "$GITHUB_STEP_SUMMARY"
+          echo "## Repository verification" >> "$GITHUB_STEP_SUMMARY"
+          echo >> "$GITHUB_STEP_SUMMARY"
+          if [ -f verify-report.json ]; then
+            python3 scripts/ci_summary.py verify-report.json >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "_verify-report.json was not produced_" >> "$GITHUB_STEP_SUMMARY"
+          fi
 
   contract:
     name: standalone contract check
@@ -112,7 +94,7 @@ PY
         with:
           python-version: "3.11"
 
-      # Runs the two checks a consumer would run immediately after installing, so a
+      # Runs the checks a consumer would run immediately after installing, so a
       # regression in either script fails the build on its own signal rather than
       # being masked by the aggregate script.
       - name: Every documented resource exists and compiles
@@ -120,52 +102,41 @@ PY
           python3 skill-drift-audit/scripts/check_skill_contract.py \
             --skill skill-drift-audit --json contract-report.json
 
-      - name: Citizen test kit emits and evaluates
+      - name: Citizen test kit emits a kit
         run: |
           set -euo pipefail
           KIT=skill-drift-audit/scripts/citizen_test_kit.py
           OUT="$(mktemp -d)"
-
-          # 1. it can emit a kit
+          echo "OUT=$OUT" >> "$GITHUB_ENV"
           python3 "$KIT" --emit --skill-name skill-drift-audit \
             --artifact-type "a real artifact of the relevant type" --out "$OUT"
-
           test -f "$OUT/公民測試_任務單.md"
           test -f "$OUT/公民測試_結果回報單.json"
 
-          # 2. a clean result evaluates to PASS with exit code 0
-          python3 - "$OUT" <<'PY'
-import json, sys
-from pathlib import Path
-out = Path(sys.argv[1])
-d = json.loads((out / "公民測試_結果回報單.json").read_text(encoding="utf-8"))
-d["tester_name"] = "ci"; d["tester_role"] = "automated"
-d["artifact_description"] = "ci fixture"
-d["validity"] = {k: True for k in d["validity"]}
-d["attempts"] = [{"attempt": 1, "command": "run", "output": "ok",
-                  "exit_code": 0, "outcome": "success", "blocked_on": ""}]
-d["help_requests"] = []; d["friction"] = []
-d["output_matches_source"] = True
-(out / "pass.json").write_text(json.dumps(d, ensure_ascii=False), encoding="utf-8")
-PY
+      - name: Evaluator discriminates PASS from COACHED
+        run: |
+          set -euo pipefail
+          KIT=skill-drift-audit/scripts/citizen_test_kit.py
+
+          # Build a passing result, then a coached one, from the emitted template.
+          python3 scripts/ci_make_results.py "$OUT"
+
+          # A clean result must evaluate to PASS with exit code 0.
           python3 "$KIT" --evaluate --result "$OUT/pass.json" | grep -q "VERDICT: PASS"
 
-          # 3. a coached result must exit non-zero — this is the assertion that proves
-          #    the evaluator actually discriminates, not merely that it runs.
-          python3 - "$OUT" <<'PY'
-import json, sys
-from pathlib import Path
-out = Path(sys.argv[1])
-d = json.loads((out / "pass.json").read_text(encoding="utf-8"))
-d["help_requests"] = [{"at_step": "step 2", "needed": "someone to explain the path"}]
-(out / "coached.json").write_text(json.dumps(d, ensure_ascii=False), encoding="utf-8")
-PY
+          # A coached result must exit non-zero. This is the assertion that proves
+          # the evaluator discriminates rather than merely runs.
           set +e
-          python3 "$KIT" --evaluate --result "$OUT/coached.json" > coached.out 2>&1
+          python3 "$KIT" --evaluate --result "$OUT/coached.json" > "$OUT/coached.out" 2>&1
           RC=$?
           set -e
-          test "$RC" -eq 1 || { echo "expected exit 1 for COACHED, got $RC"; cat coached.out; exit 1; }
-          grep -q "VERDICT: COACHED" coached.out
+          if [ "$RC" -ne 1 ]; then
+            echo "expected exit 1 for COACHED, got $RC"
+            cat "$OUT/coached.out"
+            exit 1
+          fi
+          grep -q "VERDICT: COACHED" "$OUT/coached.out"
+          echo "PASS -> exit 0; COACHED -> exit 1 (evaluator discriminates)"
 
       - name: Upload contract report
         if: always()
