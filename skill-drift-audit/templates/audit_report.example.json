@@ -1,0 +1,35 @@
+{
+  "_comment": "Shape of the reports produced by scripts/audit_skill_drift.py --json and scripts/check_skill_contract.py --json. Replace the sample values with a real run.",
+  "drift": {
+    "installed": "/home/ubuntu/skills/example-skill",
+    "reference": "/home/ubuntu/repos/example-skill/example-skill",
+    "counts": {
+      "installed": 3,
+      "reference": 7,
+      "missing": 4,
+      "extra": 0,
+      "differing": 1
+    },
+    "missing": [
+      "scripts/locate_titles.py",
+      "scripts/refine_titles.py",
+      "scripts/overlay_editable_titles.py",
+      "scripts/validate_pptx.py"
+    ],
+    "extra": [],
+    "differing": [
+      "SKILL.md"
+    ],
+    "verdict": "DRIFTED"
+  },
+  "contract": {
+    "skill": "/home/ubuntu/skills/example-skill",
+    "documented_resources": [
+      "scripts/audit_skill_drift.py",
+      "references/drift-failure-modes.md"
+    ],
+    "checked": 2,
+    "problems": [],
+    "verdict": "CONTRACT_OK"
+  }
+}
